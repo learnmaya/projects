@@ -1,0 +1,369 @@
+---
+title: "**Marketing Analytics: Customer Segmentation Using R**"
+output:
+  html_document:
+    code_folding: show
+    df_print: paged
+    highlight: pygments
+    number_sections: yes
+    theme: lumen
+    toc: yes
+    toc_float:
+      collapsed: no
+  pdf_document:
+    toc: yes
+---
+
+```{r include=FALSE}
+# Load package
+library(dplyr) #Data transformation
+library(purrr) #Functional Programming
+library(ggplot2) #Data Visualization
+library(cluster) 
+library(tidyverse)
+library(ggcorrplot)
+library(factoextra)
+library(NbClust)
+library(ggplotify)
+library(ggpubr)
+library(corrplot)
+library(gridExtra)
+library(GGally)
+library(knitr)
+```
+
+
+# **Executive Summary**
+
+Main finding and solutions are :
+
+There are 4 segment
+
+* Cluster 1 : Economy
+**  The electric bicycles company should present to cluster 1 a cargo bike with a small basket suitable for the small chores to be done in the city and they should advertise their entry level product mostly on Instagram.
+
+* Cluster 2 : Premium 
+** The ad strategy for Premium should focus on Convenience, Environment and Climate change and Saving time.
+
+* Cluster 3 : Standard
+** The electric bicycles company should present cluster 3 with a city bike that these individuals can ride to navigate around the city as well as use it as a form of exercise.To enter this specific market, we would advise the company to advertise through Instagram.
+
+* Cluster 4 : Eco-Friendly
+** Advertising strategy for Eco-Friendly should be focused on traditional offline channels, such as organic supermarkets.Preferred online channel,I recommend using Instagram as a first choice.
+
+Here is my analysis method:
+
+* First of all, I used exploratory data analysis to understand the data we need to analyze.
+
+* Second, I use Elbow analysis to find an optimal cluster range.
+
+* Then, I compare the difference between 4 and 5 Cluster.
+
+* Finally, I analyzed in more depth by correlating Cluster with demographic information.
+
+
+
+# **Load the case dataset**{.tabset .tabset-fade .tabset-pills}
+
+```{r include=FALSE}
+#Contains questions and demographic data
+da_cba = read.csv(file = "MK/CS/cargobike_attitudes.csv", header= TRUE)
+
+#Extracting Attitude Problems
+Att_Questions = da_cba[, 1:26] 
+
+# in the dataset cargobike_questions.csv, we will find 26 questions
+da_cbaq = read.csv(file = "MK/CS/cargobike_questions.csv", header = FALSE)
+
+# Delete irrelevant information
+da_cbaq =da_cbaq[-1,]
+```
+
+Let's get an idea of what we're working with.
+
+
+## Summary 
+```{r echo=FALSE}
+# Summary
+summary(da_cba)
+```
+
+## Structure
+```{r echo=FALSE}
+# Structure 
+str(da_cba)
+```
+
+## First rows of Att_Questions
+```{r echo=FALSE}
+# First rows 
+kable(head(Att_Questions))
+```
+
+## Each questions
+```{r echo=FALSE}
+# Attitudinal questions
+da_cbaq
+```
+
+# **Data analysis** 
+
+First we have to explore and visualize the data.
+
+## Bar Chart for Q1-Q26
+
+```{r echo=FALSE, fig.align='center', message=FALSE}
+da_cba %>%
+  gather(Attributes, value, 1:26) %>%
+  ggplot(aes(x=value, fill=Attributes)) +
+  geom_bar(colour="black", show.legend=FALSE) +
+  facet_wrap(~Attributes, scales="free_x") +
+  labs(x="Disagree or Agree on a 1-5 scale", y="Number",
+       title= "Over all view about questions") +
+  theme_bw()
+```
+
+## Demographic Scatter Chart
+```{r echo=FALSE, fig.align='center', message=FALSE}
+# Demographic Scatter Chart
+ggplot(da_cba,aes(x = income,y = age,color = female,size = income)) +geom_point() 
+
+```
+
+## Social Media Comparison
+
+```{r echo=FALSE, fig.align='center', message=FALSE}
+
+# Social Media Comparison
+da_cba %>%
+  gather(Attributes, value, 30:32) %>%
+  ggplot(aes(x=value, fill=Attributes)) +
+  geom_bar(colour="black") +
+  facet_wrap(~Attributes) +
+  theme_bw()
+```
+
+# **Cluster Analysis**
+
+## Determining the best number of clusters
+
+```{r echo=FALSE, fig.align='center'}
+set.seed(906)
+# Using Elbow plot 
+tot_withinss <- map_dbl(1:10,function(k){
+  model <- kmeans(x = Att_Questions,   
+                        centers = k,      
+                        nstart = 100,     
+                        iter.max = 300)
+  model$tot.withinss
+})
+
+elbow_df <- data.frame(
+  k = 1:10,
+  tot_withinss = tot_withinss
+)
+
+#Generate a graph of Total withiness from 1-10
+ggplot(elbow_df, aes(x = k, y = tot_withinss)) +
+  geom_line(col = "#F8766D") +
+  geom_point(col = "#F8766D") +
+  scale_x_continuous(breaks = 1:10) +
+  labs(x = "Cluster",y = "Total withiness", title = "Elbow Plot")
+```
+
+
+
+Because after 4-5, the line becomes significantly smoother. So 4 or 5 is probably the more appropriate cluster.
+
+## Comparison 4 vs 5 Cluster
+
+```{r echo=FALSE}
+
+kmeans_cba_4seg = kmeans(Att_Questions,   
+                        centers = 4,      
+                        nstart = 100,     
+                        iter.max = 300)   
+
+kmeans_cba_5seg = kmeans(Att_Questions,   
+                        centers = 5,      
+                        nstart = 100,     
+                        iter.max = 300)   
+```
+
+### 4 & 5 Cluster Map {.tabset .tabset-fade .tabset-pills}
+
+#### 4 Cluster Map
+
+```{r echo=FALSE, fig.align='center'}
+fviz_cluster(object = kmeans_cba_4seg,
+               data = da_cba,
+               show.clust.cent = TRUE,
+               ellipse.type = "euclid",
+               star.plot = TRUE,
+               labelsize = 0) +
+  labs(title = "4 Cluster K-Means")
+```
+
+#### 5 Cluster Map
+
+```{r echo=FALSE, fig.align='center'}
+fviz_cluster(object = kmeans_cba_5seg,
+               data = da_cba,
+               show.clust.cent = TRUE,
+               ellipse.type = "euclid",
+               star.plot = TRUE,
+               labelsize = 0)+
+  labs(title = "5 Cluster K-Means")
+```
+
+
+
+### Heatmap 4,5 Clusters{.tabset .tabset-fade .tabset-pills}
+
+#### Heatmap 4
+
+```{r echo=FALSE, fig.align='center'}
+heatmap(t(scale(kmeans_cba_4seg$centers, scale = FALSE)), Colv = NA,
+        labRow = da_cbaq)
+```
+
+#### Heatmap 5
+
+```{r echo=FALSE, fig.align='center'}
+
+heatmap(t(scale(kmeans_cba_5seg$centers, scale = FALSE)), Colv = NA,
+        labRow = da_cbaq)
+```
+
+### Compare demographical date in different Clusters
+
+#### Number of people in Cluster 4 & 5
+```{r echo=FALSE}
+
+table(kmeans_cba_4seg$cluster)
+
+table(kmeans_cba_5seg$cluster)
+```
+
+
+```{r include=FALSE}
+
+da_cba$cluster = kmeans_cba_4seg$cluster # creates a new variable
+da_cba$cluster_5seg = kmeans_cba_5seg$cluster # creates a new variable
+da_cba[da_cba$cluster == "2", ]
+```
+
+#### Cluster 4 & 5 VS Age
+```{r echo=FALSE, fig.align='center', message=FALSE}
+q1 <- ggplot(da_cba,aes(x = cluster,y = age, group= cluster, color = cluster)) +geom_boxplot()
+
+q1_5seg <- ggplot(da_cba,aes(x = cluster_5seg,y = age, group= cluster_5seg, color = cluster_5seg)) +geom_boxplot()
+ggarrange(q1, q1_5seg, widths = c(2,2), labels = c('4', '5'))
+```
+
+#### Cluster 4 & 5 VS Income
+
+```{r echo=FALSE, fig.align='center', message=FALSE}
+q2<- ggplot(da_cba,aes(x = cluster,y = income, group= cluster, color = cluster)) +geom_boxplot()
+
+q2_5seg <- ggplot(da_cba,aes(x = cluster_5seg,y = income, group= cluster_5seg, color = cluster_5seg)) +geom_boxplot()
+
+ggarrange(q2, q2_5seg, widths = c(2,2), labels = c('4', '5'))
+```
+
+After Kmean analysis, although statistically, this data is more appropriate for the 5 segments, I think that 4 segments are more consistent with our business problem.  The characteristics of one of the 5 segments overlap with the other 2. Using all 5 segments does not help the company to better communicate with specific segments.
+
+# **Explore Cluster analysis results base on 4 cluster**
+
+## Cluster vs MEAN(Demographics)
+```{r echo=FALSE}
+# Cluster vs MEAN(Demographics)
+NQ_da_cba <- da_cba %>%
+  select(age:cluster) %>%
+  group_by(cluster) %>%
+  summarise_all(list(mean))
+
+NQ_da_cba
+```
+
+
+## Social Media MEAN(Questions & Demographics)
+
+```{r echo=FALSE}
+NQ2_da_cba <- da_cba %>%
+  select(age:twitter)
+NQ2_da_cba  %>% group_by(facebook) %>% summarise_all(list(mean))
+NQ2_da_cba  %>% group_by(instagram) %>% summarise_all(list(mean))
+NQ2_da_cba %>% group_by(twitter) %>% summarise_all(list(mean))
+```
+
+
+## Graphs analysis
+### Compare Clusters VS Age & Income
+
+```{r echo=FALSE, fig.align='center', message=FALSE}
+q1 <- ggplot(da_cba,aes(x = cluster,y = age, group= cluster, color = cluster)) +geom_boxplot()
+q2<- ggplot(da_cba,aes(x = cluster,y = income, group= cluster, color = cluster)) +geom_boxplot()
+
+ggarrange(q1, q2, widths = c(2,2), labels = c('a', 'b'))
+```
+
+
+### Compare Clusters VS Age & Income by gender 
+```{r echo=FALSE, fig.align='center', message=FALSE}
+e1 <- ggplot(da_cba,aes(x = cluster,y = age, group= cluster, color = female)) +geom_count()
+e2 <- ggplot(da_cba,aes(x = cluster,y = income, group= cluster, color = female)) +geom_count()
+
+ggarrange(e1, e2, widths = c(2,2), labels = c('a', 'b'))
+```
+
+
+# **Conclusion**
+
+I have identified four market segments.
+
+* Cluster 1 : Economy 
+
+The first cluster is characterized to be the most diverse in terms of age, spacing from 20 to almost 70 years old (mean 41), to have the lowest income of the bunch (mean €24,922.48), and to be prevalently formed by men (70:30). As their presence on social media, they prefer Instagram and Facebook over Twitter. 
+This cluster is not very sensitive to the sustainable future of our planet as it disagrees, on average, with statements such as “I want to be part of the future today” and “I want to leave a better world for my children”. Moreover, cluster number 1 could be described as a non-adventurous population, as it does not like spending time outdoors nor trying new things. This attribute could explain the fact that their friends do not have cargo bikes, a new product. 
+Cluster number 1 indeed has strong negative feeling toward cars, and they mostly consider the bike as a useful way of transport through the city. 
+
+For all these reasons, the electric bicycles company should present to cluster 1 a cargo bike with a small basket suitable for the small chores to be done in the city and they should advertise their entry level product mostly on Instagram.
+
+
+* Cluster 2 : Premium 
+
+This is cluster#2 which is a male dominated group with average age of 27 and an average income of 64K annually. They are highly motivated and high net worth millennials for whom saving time by not doing redundant things like groceries really matters. Most of them are city dwellers who are environment conscious and open to trying new things as they have more dispensable income.
+
+The ad strategy for them should focus on 3 key components: -
+- Convenience (City drive and parking)
+- Environment and Climate change.
+- Saving time.
+ Digital channels relevant to them compared to offline channels. Focus on Insta and Twitter
+
+
+* Cluster 3 : Standard
+
+The individuals represented in cluster #3, have an average age of 41 years old (ranging mid 30s to mid 40s), are approximately 36% women, and make an average income of ~49k annually. Although they recognize the importance of a car, due to difficulties finding parking in the city, they have opted to ride their bikes. Biking in the city, allows them to enjoy the outdoors while exercising, which compensates for their inability to go to the gym due to their busy schedule. Their preferred channel of social media is Instagram, followed by Facebook, and lastly Twitter. 
+
+For the aforementioned reasons, the electric bicycles company should present cluster 3 with a city bike that these individuals can ride to navigate around the city as well as use it as a form of exercise. It should be practical and lightweight, to fit their active daily lives and the cargo should be large enough to run errands, such as to pack organic groceries. To enter this specific market, we would advise the company to advertise through Instagram.
+
+
+* Cluster 4 : Eco-Friendly
+
+The average age of this segment is around 39 years old. Their average income is around $40K. This segment 67%  are female, the highest of the 4 segments. Most likely to live outside the city (closer to nature). They are pioneers in the environmental issues. Making the world a better place for their children is their key concern. They love organic food, support renewable energy, and reduce waste. They have no apparent preference for social media. And they have the lowest average social media usage of the four segments.
+
+The focus of the advertising for this segment:
+Cargo bike is a eco-friendly bicycle, use it to build a better future.
+Advertising should be focused on traditional offline channels, such as organic supermarkets.
+Preferred online channel,we recommend using Instagram as a first choice.
+
+
+
+
+
+
+
+
+
+```{r}
