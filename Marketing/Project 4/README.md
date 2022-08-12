@@ -6,3 +6,4 @@ This model uses Unsupervised Learning (k-means) and Supervised Learning (linear 
 The Unsupervised Learning part divides Berkeley into different areas using restaurant location information. It groups restaurants that are close to each other into these clusters.
 
 The Supervised Learning section predicts how many ratings a user will give a restaurant. The model will try to infer the correct rating from the examples of known correct ratings. By analyzing the user's past ratings, we can try to predict how a user will rate a new restaurant.
+
